@@ -1,8 +1,14 @@
 import { Elysia } from "elysia";
+import { swagger } from "@elysiajs/swagger";
+import { staticPlugin } from "@elysiajs/static";
 import { db } from "./db";
 import { users } from "./db/schema";
+import { userRoutes } from "./routes/users-route";
 
 const app = new Elysia()
+  .use(swagger())
+  .use(staticPlugin())
+  .use(userRoutes)
   .get("/", () => "Hello Elysia!")
   .get("/users", async () => {
     try {
