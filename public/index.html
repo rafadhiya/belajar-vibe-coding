@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Registration - Base Flow</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome</h1>
+        <p class="subtitle">Create your account to get started</p>
+        
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" placeholder="Enter your name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="email@example.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">Register</button>
+        </form>
+        
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('registrationForm');
+        const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Processing...';
+            messageDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    messageDiv.innerText = 'Registration successful! Welcome, ' + name;
+                    messageDiv.className = 'message success';
+                    messageDiv.style.display = 'block';
+                    form.reset();
+                } else {
+                    messageDiv.innerText = result.EROR || 'Registration failed';
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                }
+            } catch (error) {
+                messageDiv.innerText = 'Network error. Please try again.';
+                messageDiv.className = 'message error';
+                messageDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Register';
+            }
+        });
+    </script>
+</body>
+</html>

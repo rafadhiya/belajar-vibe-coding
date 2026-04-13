@@ -1,36 +1,80 @@
-# Setup Proyek Baru dengan Bun, ElysiaJS, dan Drizzle
+# Panduan Implementasi Fitur Registrasi User
 
-## Deskripsi Tugas
-Tugas ini adalah untuk menginisialisasi proyek backend baru di direktori saat ini menggunakan **Bun** sebagai runtime/package manager, **ElysiaJS** sebagai framework web, dan **Drizzle ORM** dengan database **PostgreSQL**.
+Dokumen ini berisi dokumen perencanaan dan panduan teknis bagi programmer atau model AI untuk mengimplementasikan fitur registrasi *user* baru. Proyek ini menggunakan Bun, ElysiaJS, dan Drizzle ORM (PostgreSQL). Harap ikuti spesifikasi dan tahapan di bawah ini dengan teliti.
 
-## Tech Stack Utama
-- **Bun** (Runtime lingkungan eksekusi utama)
-- **ElysiaJS** (Web framework)
-- **Drizzle ORM** (Database ORM)
-- **PostgreSQL** (Gunakan koneksi melalui URL / Connection String)
+## 1. Spesifikasi Database (Tabel `users`)
+Sesuaikan atau buat skema Drizzle untuk tabel `users` (di dalam `src/db/schema.ts` atau file sejenis) dengan kolom-kolom berikut:
+- **`id`**: integer, auto increment (atau serial di PostgreSQL), primary key.
+- **`name`**: varchar(255), not null.
+- **`email`**: varchar(255), not null, di-*set* sebagai tipe `unique`.
+- **`password`**: varchar(255), not null. Mesti cukup panjang karena tabel akan menampung hasil enkripsi (hash) menggunakan `bcrypt`.
+- **`created_at`**: timestamp, *default*-nya adalah *current timestamp* (waktu sekarang ketika baris dibuat), not null.
 
-## Langkah Implementasi (High-Level)
-Silakan ikuti instruksi berikut untuk melakukan inisialisasi dan konfigurasi dasar:
+## 2. Struktur Folder & File
+Anda wajib memisahkan kode antara *routing* dan logika bisnis (service) di dalam direktori `src`.
+- **`src/routes/`**: Tempat meletakkan definisi *endpoint* dari framework ElysiaJS.
+  - Aturan penamaan file menggunakan format: *[nama-entitas]-route.ts*.
+  - Contoh untuk user: `users-route.ts`.
+- **`src/services/`**: Tempat meletakkan *business logic* (akses ke database, proses *hashing* password, validasi unik, dl).
+  - Aturan penamaan file menggunakan format: *[nama-entitas]-services.ts*.
+  - Contoh untuk user: `users-services.ts`.
 
-1. **Inisialisasi Proyek**
-   Lakukan inisialisasi proyek standar menggunakan perintah bawaan Bun (`bun init`) di direktori ini.
+## 3. Spesifikasi API
+Buat *endpoint* baru dengan rincian berikut:
 
-2. **Instalasi Dependency & Tools**
-   - Install package inti untuk framework web: `elysia`.
-   - Install package untuk database: `drizzle-orm` dan driver PostgreSQL yang kompatibel dengan Bun (seperti `postgres`).
-   - Install tools untuk migrasi database: `drizzle-kit` sebagai dependency development.
+- **Endpoint URL**: `POST /api/user`
+- **Request Body JSON**:
+  ```json
+  { 
+    "name" : "Eko",
+    "email" : "eko@DD",
+    "password" : "rahasia"
+  }
+  ```
+- **Response JSON (SUKSES)**:
+  ```json
+  {
+    "data" : "ok"
+  }
+  ```
+- **Response JSON (ERROR - Email sudah ada)**:
+  Kembalikan HTTP code berjenis *Bad Request* (misalnya 400).
+  ```json
+  {
+    "EROR" : " EMAIL sudah terdaftar"
+  }
+  ```
 
-3. **Konfigurasi Environment Database**
-   Siapkan file environment (misal: `.env`) dan tambahkan sebuah *environment variable* (misal: `DATABASE_URL`) yang akan menampung Connection URL untuk PostgreSQL.
+## 4. Tahapan / Langkah-Langkah Implementasi
+Ikuti langkah-langkah ini secara bertahap saat mengimplementasikannya:
 
-4. **Konfigurasi Drizzle ORM**
-   Buat file `drizzle.config.ts` (atau ekstensi sejenis) untuk mengatur konfigurasi Drizzle agar mengarah ke kredensial database yang ada di dalam *environment variable*.
+1. **Modifikasi Skema Drizzle**
+   - Sesuaikan file `schema.ts`. Gunakan *builder* column dari `drizzle-orm/pg-core` (misalnya `varchar`, `timestamp`, `serial`, `integer`, dll).
+   - Pastikan panjang dari string `varchar` diatur sebesar 255.
 
-5. **Setup Server Utama**
-   - Buat *entry point* aplikasi (misal `src/index.ts` atau `server.ts`).
-   - Inisialisasi koneksi dari Drizzle ke PostgreSQL menggunakan driver yang telah di-install.
-   - Buat instance ElysiaJS dan jalankan server pada port default (atau port pilihan).
-   - Tambahkan minimal satu *endpoint* / rute sederhana (seperti `GET /` atau ping) untuk memverifikasi bahwa server sudah berjalan dengan sukses.
+2. **Instalasi Library Pendukung (Jika belum ada)**
+   - Jika project belum memiliki module instalasi `bcrypt`, jalankan perintah `bun add bcrypt` dan `bun add -d @types/bcrypt` (karena *password* mewajibkan tipe *hash bcrypt*).
 
-6. **Konfigurasi Skrip (Opsional tapi disarankan)**
-   Tambahkan *script commands* pada file `package.json` untuk mempermudah menjalankan server dalam mode *watch* (development) dan command untuk migrasi Drizzle.
+3. **Buat Logika Layanan (Service)**
+   - Buat direktori `src/services` dan file `users-services.ts`.
+   - Buat sebuah `function` atau `class` untuk membuat pengguna baru.
+   - **Logikanya**:
+     - Cek database melalui Drizzle (*select where email = input email*).
+     - Jika *email* sudah ada, lemparkan pesan *error* "EMAIL sudah terdaftar".
+     - Jika *email* belum pernah ada, lalukan proses *hash* pada *password* menggunakan `bcrypt`.
+     - Lakukan proses penyimpanan (*insert*) ke tabel `users` dengan `password` yang sudah dalam bentuk *hash*.
+
+4. **Buat Rute (Routes)**
+   - Buat direktori `src/routes` dan file `users-route.ts`.
+   - Gunakan instance ElysiaJS baru (`new Elysia()`) untuk membungkus rute.
+   - Definisikan metode HTTP `.post()` untuk rute `/api/user`.
+   - Tangani proses *request body* dengan memanggil layanan dari `users-services.ts`.
+   - Lakukan `try-catch`. Jika terjadi pelemparan kesalahan terkait email dari service, kembalikan objek `{"EROR": " EMAIL sudah terdaftar"}`.
+   - Jika service selesai tanpa kendala, kembalikan objek `{"data": "ok"}`.
+
+5. **Daftarkan Rute dan Uji Coba Lintas**
+   - Bukalah file utama `src/index.ts`.
+   - *Import* instance rute dari `users-route.ts`.
+   - Tambahkan *method* `.use()` pada instans Elysia utama supaya endpoint `/api/user` dapat diakses dan direspon dengan baik.
+   - Gunakan *tool* migrasi (contoh: `drizzle-kit push`) untuk menerapkan perubahan skema ke dalam bentuk relasi tabel secara riil. 
+   - Jalankan server `bun run dev` dan uji endpoint API dengan alat yang kompatibel.
